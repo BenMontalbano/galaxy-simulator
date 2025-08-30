@@ -37,8 +37,8 @@ c = np.float32(1/3260) # kpc/yr
 
 
 # Simulation Parameters
-duration = 2000000 # years
-dt = np.float32(1000)
+duration = 100000000 # years
+dt = np.float32(500)
 num_steps = int(duration / dt)
 epsilon = np.float32(0.1)  # Softening parameter to avoid division by zero
 frame_speed = 100 # number of steps per frame
@@ -50,7 +50,7 @@ dm_block_mass = np.float32(4 * star_density)
 
 sn_center = np.array([-20.0, 0.0, 0.0], dtype=np.float32)
 sn_velocity = np.array([1.5E-7, 1.0E-7, 0.0], dtype=np.float32)
-sn_tot_blocks = 2000
+sn_tot_blocks = 12000
 sn_disk_frac = 0.8
 sn_bulge_frac = 1 - sn_disk_frac
 sn_dm_frac = 0.5
@@ -75,7 +75,7 @@ sn_arm_width = np.float32(np.pi / 6)
 
 alm_center = np.array([20.0, 0.0, 0.0], dtype=np.float32)
 alm_velocity = np.array([-1.5E-7, -1.0E-7, 0.0], dtype=np.float32)
-alm_tot_blocks = 10000
+alm_tot_blocks = 8000
 alm_disk_frac = 0.8
 alm_bulge_frac = 1 - alm_disk_frac
 alm_dm_frac = 1
@@ -501,7 +501,7 @@ for t in range(num_steps):
 end_time = time.time()  
 
 
-# === Define indices properly ===
+# Define indices properly
 core_index_sn = 0
 core_index_alm = 1
 
@@ -519,14 +519,14 @@ star_end_alm = star_start_alm + alm_num_stars
 dm_start = star_end_alm
 dm_end = dm_start + sn_num_dm + alm_num_dm
 
-# === Setup canvas and view ===
+# Setup canvas and view
 canvas = scene.SceneCanvas(keys='interactive', show=True, bgcolor=(0.01, 0.01, 0.03, 1), size=(2560, 1440))
 TARGET_SIZE = (2560, 1440)
 view = canvas.central_widget.add_view()
 view.camera = scene.cameras.TurntableCamera(elevation=60, azimuth=0, distance=6000, fov=1)
 view.camera.center = tuple(center_of_mass)
 
-# === Setup particles initial positions ===
+# Setup particles initial positions
 initial_star_pos = np.vstack((
     np.stack((X_paths[star_start_sn:star_end_sn, 0],
               Y_paths[star_start_sn:star_end_sn, 0],
@@ -540,7 +540,7 @@ initial_dm_pos = np.stack((X_paths[dm_start:dm_end, 0],
                            Y_paths[dm_start:dm_end, 0],
                            Z_paths[dm_start:dm_end, 0]), axis=-1)
 
-# === Create star colors ===
+# Create star colors
 num_stars = initial_star_pos.shape[0]
 color_randoms = np.random.uniform(0, 1, num_stars)
 star_colors = np.zeros((num_stars, 4))
@@ -551,12 +551,12 @@ for i in range(num_stars):
     b = 0.9 + 0.1 * t
     star_colors[i] = (r, g, b, 1.0)
 
-# === Starblock sizes based on distance ===
+# Starblock sizes based on distance
 radii = np.linalg.norm(initial_star_pos, axis=1)
 max_r = np.max(radii)
 sizes = 2 + 1 * (1 - radii / max_r)
 
-# === Create visual objects ===
+# Create visual objects
 scatter_stars = visuals.Markers()
 scatter_stars.set_data(initial_star_pos, face_color=star_colors, size=sizes)
 view.add(scatter_stars)
@@ -577,14 +577,14 @@ core_scatter = visuals.Markers()
 core_scatter.set_data(core_pos, face_color='black', size=20, edge_color='white', edge_width=2)
 view.add(core_scatter)
 
-# === Setup writer for animation ===
+# Setup writer for animation
 frame_index = 0
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M")
 filename = f'galactic_sim_{timestamp}.mp4'
 writer = imageio.get_writer(filename, fps=30, macro_block_size=None)
 
-# === Animation update function ===
+# Animation update function
 def update(event):
     global frame_index
 
@@ -598,7 +598,7 @@ def update(event):
     frame_index = min(frame_index, X_paths.shape[1] - 1)
 
     try:
-        # === Update star positions ===
+        # Update star positions
         pos_star_t = np.vstack((
             np.stack((X_paths[star_start_sn:star_end_sn, frame_index],
                       Y_paths[star_start_sn:star_end_sn, frame_index],
@@ -609,20 +609,20 @@ def update(event):
         ))
         scatter_stars.set_data(pos_star_t, face_color=star_colors, size=sizes)
 
-        # === Update DM positions ===
+        # Update DM positions
         pos_dm_t = np.stack((X_paths[dm_start:dm_end, frame_index],
                              Y_paths[dm_start:dm_end, frame_index],
                              Z_paths[dm_start:dm_end, frame_index]), axis=-1)
         scatter_dm.set_data(pos_dm_t, face_color=dm_color, size=3)
 
-        # === Update SMBH core positions ===
+        # Update SMBH core positions
         core_pos_t = np.stack((X_paths[[core_index_sn, core_index_alm], frame_index],
                                Y_paths[[core_index_sn, core_index_alm], frame_index],
                                Z_paths[[core_index_sn, core_index_alm], frame_index]), axis=-1)
         core_glow.set_data(core_pos_t, face_color=(1, 1, 1, 0.15), size=20)
         core_scatter.set_data(core_pos_t, face_color='black', size=20, edge_color='white', edge_width=2)
 
-        # === Save frame ===
+        # Save frame
         img = canvas.render(size = TARGET_SIZE)
         img = np.asarray(img)
         if img.shape[-1] == 4:
@@ -638,7 +638,7 @@ def update(event):
         writer.close()
         timer.stop()
 
-# === Start animation ===
+# Start animation
 timer = app.Timer(interval=1/60, connect=update, start=True)
 app.run()
 
@@ -647,4 +647,5 @@ app.run()
 total_seconds = end_time - start_time
 print(f"Simulation completed in {total_seconds:.2f} seconds\
        ({total_seconds/60:.2f} minutes).")
+
 print("Video saved at:", os.path.abspath(filename))
